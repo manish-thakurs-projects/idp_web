@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Real-time fuel efficiency monitoring with YF-S201B sensor via ESP32 BLE and mobile GPS">
+<title>FuelSense AI</title>
+<!-- PWA Manifest (inline data URI — works as single-file PWA) -->
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22FuelSense%20AI%22%2C%22short_name%22%3A%22FuelSense%22%2C%22description%22%3A%22Real-time%20fuel%20efficiency%20monitoring%20%26%20anomaly%20detection%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23070c18%22%2C%22theme_color%22%3A%22%230a0e1a%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iODAiIGZpbGw9IiMwNzBjMTgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyODBweCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPuKbhTwvdGV4dD48L3N2Zz4%3D%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #070c18;
+  --bg2:       #0d1424;
+  --bg3:       #141d30;
+  --border:    rgba(0,200,255,0.12);
+  --border2:   rgba(0,200,255,0.06);
+  --cyan:      #00c8ff;
+  --cyan-dim:  rgba(0,200,255,0.15);
+  --cyan-glow: rgba(0,200,255,0.4);
+  --amber:     #ffb020;
+  --amber-dim: rgba(255,176,32,0.15);
+  --red:       #ff3b5c;
+  --red-dim:   rgba(255,59,92,0.15);
+  --green:     #00e87a;
+  --green-dim: rgba(0,232,122,0.15);
+  --text:      #c8d8f0;
+  --text-dim:  #4a6080;
+  --text-muted:#2a3a50;
+  --mono:      'Space Mono', monospace;
+  --display:   'Barlow Condensed', sans-serif;
+  --body:      'Barlow', sans-serif;
+  --r:         10px;
+  --r-lg:      16px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  overflow-x: hidden;
+}
+
+/* ── Animated Grid Background ──────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+#app { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,12,24,0.9);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: var(--cyan-dim);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.logo-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(0,200,255,0.2));
+}
+.logo-text {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+}
+.logo-text span { color: var(--cyan); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Status Pill ─────────────────────────────────────────────────────────── */
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-family: var(--mono);
+  font-size: 11px;
+  border: 1px solid;
+  transition: all 0.3s;
+  letter-spacing: 0.05em;
+}
+.status-pill.disconnected { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+.status-pill.connecting   { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+.status-pill.connected    { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-pill.connected .status-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.7); }
+}
+
+/* ── Connect Button ──────────────────────────────────────────────────────── */
+#connectBtn {
+  padding: 8px 18px;
+  background: var(--cyan);
+  color: #000;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+#connectBtn:hover  { background: #33d4ff; transform: translateY(-1px); box-shadow: 0 4px 16px var(--cyan-glow); }
+#connectBtn:active { transform: translateY(0); }
+#connectBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── Main Content ────────────────────────────────────────────────────────── */
+main { flex: 1; padding: 20px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+/* ── Alert Banner ────────────────────────────────────────────────────────── */
+#alertBanner {
+  display: none;
+  padding: 12px 16px;
+  border-radius: var(--r);
+  margin-bottom: 20px;
+  border: 1px solid;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  animation: alert-flash 0.6s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+#alertBanner.LEAKAGE { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+#alertBanner.THEFT   { background: var(--red-dim);   border-color: var(--red);   color: var(--red);   }
+#alertBanner.SPIKE   { background: var(--cyan-dim);  border-color: var(--cyan);  color: var(--cyan);  }
+#alertBanner::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: currentColor;
+}
+@keyframes alert-flash {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* ── Metric Grid ─────────────────────────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (min-width: 600px) { .metrics-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent-color, var(--cyan));
+  opacity: 0.6;
+}
+.metric-card:hover { border-color: rgba(0,200,255,0.3); box-shadow: 0 0 20px rgba(0,200,255,0.05); }
+
+.metric-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.metric-value {
+  font-family: var(--display);
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  transition: color 0.3s;
+}
+.metric-value small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 3px;
+}
+.metric-sub {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* card accent colors */
+.card-flow    { --accent-color: var(--cyan);  }
+.card-mileage { --accent-color: var(--green); }
+.card-cost    { --accent-color: var(--amber); }
+.card-total   { --accent-color: #a78bfa;      }
+
+/* ── Two-column bottom section ───────────────────────────────────────────── */
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 600px) { .bottom-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ── Panel ───────────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border2);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-header .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+
+/* ── Flow Chart (canvas) ─────────────────────────────────────────────────── */
+#flowChart { width: 100%; height: 150px; display: block; padding: 12px 12px 8px; }
+
+/* ── GPS Panel ───────────────────────────────────────────────────────────── */
+.gps-body { padding: 14px 16px; }
+.gps-row  {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.gps-row:last-child { border-bottom: none; }
+.gps-key   { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; }
+.gps-val   { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.gps-val.active { color: var(--green); }
+
+/* ── GPS Btn ─────────────────────────────────────────────────────────────── */
+#gpsBtn {
+  margin: 0 16px 14px;
+  width: calc(100% - 32px);
+  padding: 9px;
+  background: var(--green-dim);
+  border: 1px solid var(--green);
+  color: var(--green);
+  border-radius: var(--r);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+#gpsBtn:hover { background: rgba(0,232,122,0.25); }
+
+/* ── Log Panel ───────────────────────────────────────────────────────────── */
+.log-body {
+  padding: 10px 12px;
+  height: 200px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.log-entry { color: var(--text-dim); }
+.log-entry.anomaly { color: var(--red); }
+.log-entry.connect { color: var(--cyan); }
+.log-entry.gps-log { color: var(--green); }
+.log-entry::before { content: attr(data-time); color: var(--text-muted); margin-right: 8px; }
+
+/* ── Controls row ────────────────────────────────────────────────────────── */
+.controls-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.ctrl-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--r);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.ctrl-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+/* ── No BLE banner ───────────────────────────────────────────────────────── */
+#bleWarning {
+  display: none;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber);
+  border-radius: var(--r);
+  color: var(--amber);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── PWA Install Banner ──────────────────────────────────────────────────── */
+#installBanner {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  background: var(--bg3);
+  border: 1px solid var(--cyan);
+  border-radius: var(--r-lg);
+  padding: 12px 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 20px var(--cyan-glow);
+  display: none;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+  max-width: 360px;
+  animation: slide-up 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+#installBanner .ib-icon {
+  width: 40px; height: 40px;
+  background: var(--cyan-dim);
+  border: 1px solid var(--cyan);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+#installBanner .ib-text { flex: 1; }
+#installBanner .ib-title {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+#installBanner .ib-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+#installBanner .ib-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.ib-btn-install {
+  padding: 6px 14px;
+  background: var(--cyan);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+}
+.ib-btn-install:hover { background: #33d4ff; }
+.ib-btn-dismiss {
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ib-btn-dismiss:hover { color: var(--text); border-color: var(--text-dim); }
+
+/* ── Offline Toast ───────────────────────────────────────────────────────── */
+#offlineToast {
+  display: none;
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 998;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber);
+  border-radius: 99px;
+  padding: 6px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--amber);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border2);
+  letter-spacing: 0.1em;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⛽</div>
+    <div class="logo-text">Fuel<span>Sense</span> AI</div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill disconnected" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusText">DISCONNECTED</span>
+    </div>
+    <button id="connectBtn">Connect BLE</button>
+  </div>
+</header>
+
+<!-- ── PWA Install Banner ───────────────────────────────────────────────── -->
+<div id="installBanner">
+  <div class="ib-icon">⛽</div>
+  <div class="ib-text">
+    <div class="ib-title">Install FuelSense AI</div>
+    <div class="ib-sub">Add to home screen · Works offline</div>
+  </div>
+  <div class="ib-actions">
+    <button class="ib-btn-install" id="installBtn">Install</button>
+    <button class="ib-btn-dismiss" id="dismissBtn">✕</button>
+  </div>
+</div>
+
+<!-- ── Offline Toast ────────────────────────────────────────────────────── -->
+<div id="offlineToast">⚡ OFFLINE MODE — App cached locally</div>
+
+<!-- ── Main ────────────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- BLE not supported warning -->
+  <div id="bleWarning">
+    ⚠️ <strong>Web Bluetooth not available.</strong>
+    Use <strong>Chrome on Android/Desktop</strong> with the flag
+    <code>chrome://flags/#enable-web-bluetooth</code> enabled.
+    On iOS, Web Bluetooth is not supported — use a BLE bridge app.
+  </div>
+
+  <!-- Alert banner -->
+  <div id="alertBanner"></div>
+
+  <!-- Metrics -->
+  <div class="metrics-grid">
+    <div class="metric-card card-flow">
+      <div class="metric-label">Flow Rate</div>
+      <div class="metric-value" id="valFlow">0.000<small>L/min</small></div>
+      <div class="metric-sub" id="subFlow">Waiting for data…</div>
+    </div>
+    <div class="metric-card card-mileage">
+      <div class="metric-label">Mileage</div>
+      <div class="metric-value" id="valMileage">—<small>km/L</small></div>
+      <div class="metric-sub" id="subMileage">Need GPS + flow</div>
+    </div>
+    <div class="metric-card card-cost">
+      <div class="metric-label">Trip Cost</div>
+      <div class="metric-value" id="valCost">₹0<small></small></div>
+      <div class="metric-sub" id="subCost">@ ₹105/L (petrol)</div>
+    </div>
+    <div class="metric-card card-total">
+      <div class="metric-label">Total Fuel</div>
+      <div class="metric-value" id="valTotal">0.000<small>L</small></div>
+      <div class="metric-sub" id="subTotal">This session</div>
+    </div>
+  </div>
+
+  <!-- Bottom grid -->
+  <div class="bottom-grid">
+
+    <!-- Flow chart -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div> Live Flow (L/min)</div>
+      <canvas id="flowChart"></canvas>
+    </div>
+
+    <!-- GPS panel -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot" style="background:var(--green)"></div> GPS Location</div>
+      <div class="gps-body">
+        <div class="gps-row">
+          <span class="gps-key">STATUS</span>
+          <span class="gps-val" id="gpsStatus">Inactive</span>
+        </div>
+        <div class="gps-row">
+          <span class="gps-key">LATITUDE</span>
+          <span class="gps-val" id="gpsLat">—</span>
+        </div>
+        <div class="gps-row">
+          <span class="gps-key">LONGITUDE</span>
+          <span class="gps-val" id="gpsLon">—</span>
+        </div>
+        <div class="gps-row">
+          <span class="gps-key">SPEED</span>
+          <span class="gps-val" id="gpsSpeed">— km/h</span>
+        </div>
+        <div class="gps-row">
+          <span class="gps-key">DISTANCE</span>
+          <span class="gps-val" id="gpsDist">0.000 km</span>
+        </div>
+      </div>
+      <button id="gpsBtn">▶ Start GPS</button>
+    </div>
+
+  </div>
+
+  <!-- Controls + Log -->
+  <div class="bottom-grid" style="margin-top:14px;">
+    <div class="panel">
+      <div class="panel-header"><div class="dot" style="background:var(--amber)"></div> Event Log</div>
+      <div class="log-body" id="logBody"></div>
+    </div>
+    <div class="panel" style="padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div class="panel-header" style="padding:0 0 10px 0; border-bottom:1px solid var(--border2); margin-bottom:12px;">
+          <div class="dot" style="background:#a78bfa"></div> Session Controls
+        </div>
+        <div style="font-family:var(--mono); font-size:11px; color:var(--text-dim); line-height:1.9;">
+          <div>FUEL PRICE <span id="fuelPriceLabel" style="color:var(--amber)">₹105.00/L</span></div>
+          <div style="margin:10px 0 4px;">
+            <input type="range" id="fuelPriceSlider" min="80" max="150" value="105" step="0.5"
+              style="width:100%; accent-color:var(--amber); cursor:pointer;">
+          </div>
+          <div style="color:var(--text-muted); margin-top:8px; font-size:10px;">Petrol/Diesel — adjust to local price</div>
+        </div>
+      </div>
+      <div class="controls-row">
+        <button class="ctrl-btn" id="resetBtn">↺ Reset</button>
+        <button class="ctrl-btn" id="exportBtn">↓ Export CSV</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>FUELSENSE AI · YF-S201B + ESP32 BLE + MOBILE GPS · BMSIT&M 2025-26 · MANISH THAKUR</footer>
+</div>
+
+<script>
+// ─── BLE Constants ────────────────────────────────────────────────────────────
+const SERVICE_UUID     = '12345678-1234-1234-1234-123456789abc';
+const DATA_CHAR_UUID   = '12345678-1234-1234-1234-123456789abd';
+const CMD_CHAR_UUID    = '12345678-1234-1234-1234-123456789abe';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let bleDevice     = null;
+let cmdChar       = null;
+let connected     = false;
+
+let fuelPricePerL = 105;
+let totalLitres   = 0;
+let tripDistance  = 0;        // km (from GPS)
+let lastPos       = null;
+let gpsWatchId    = null;
+let gpsActive     = false;
+
+// Chart data
+const CHART_LEN = 60;
+const flowHistory = new Array(CHART_LEN).fill(0);
+
+// CSV log
+const csvRows = [['timestamp','flow_lpm','total_l','distance_km','speed_kmh','anomaly']];
+
+// ─── DOM refs ─────────────────────────────────────────────────────────────────
+const connectBtn    = document.getElementById('connectBtn');
+const statusPill    = document.getElementById('statusPill');
+const statusText    = document.getElementById('statusText');
+const alertBanner   = document.getElementById('alertBanner');
+const valFlow       = document.getElementById('valFlow');
+const valMileage    = document.getElementById('valMileage');
+const valCost       = document.getElementById('valCost');
+const valTotal      = document.getElementById('valTotal');
+const subFlow       = document.getElementById('subFlow');
+const subMileage    = document.getElementById('subMileage');
+const gpsStatusEl   = document.getElementById('gpsStatus');
+const gpsLatEl      = document.getElementById('gpsLat');
+const gpsLonEl      = document.getElementById('gpsLon');
+const gpsSpeedEl    = document.getElementById('gpsSpeed');
+const gpsDistEl     = document.getElementById('gpsDist');
+const gpsBtn        = document.getElementById('gpsBtn');
+const logBody       = document.getElementById('logBody');
+const fuelSlider    = document.getElementById('fuelPriceSlider');
+const fuelPriceLabel= document.getElementById('fuelPriceLabel');
+const canvas        = document.getElementById('flowChart');
+const ctx           = canvas.getContext('2d');
+
+// ─── Check BLE support ────────────────────────────────────────────────────────
+if (!navigator.bluetooth) {
+  document.getElementById('bleWarning').style.display = 'block';
+  connectBtn.disabled = true;
+}
+
+// ─── Fuel price slider ────────────────────────────────────────────────────────
+fuelSlider.addEventListener('input', () => {
+  fuelPricePerL = parseFloat(fuelSlider.value);
+  fuelPriceLabel.textContent = `₹${fuelPricePerL.toFixed(2)}/L`;
+  updateCostDisplay();
+});
+
+// ─── Log helper ───────────────────────────────────────────────────────────────
+function addLog(msg, cls = '') {
+  const now = new Date();
+  const t = now.toTimeString().slice(0,8);
+  const el = document.createElement('div');
+  el.className = `log-entry ${cls}`;
+  el.setAttribute('data-time', t);
+  el.textContent = msg;
+  logBody.appendChild(el);
+  if (logBody.children.length > 200) logBody.removeChild(logBody.firstChild);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+
+// ─── Status UI ────────────────────────────────────────────────────────────────
+function setStatus(state, label) {
+  statusPill.className = `status-pill ${state}`;
+  statusText.textContent = label;
+}
+
+// ─── BLE Connect ─────────────────────────────────────────────────────────────
+connectBtn.addEventListener('click', async () => {
+  if (connected) { disconnectBLE(); return; }
+  if (!navigator.bluetooth) return;
+
+  setStatus('connecting', 'CONNECTING…');
+  connectBtn.disabled = true;
+
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'FuelSense-ESP32' }],
+      optionalServices: [SERVICE_UUID]
+    });
+
+    bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+    const server  = await bleDevice.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    const dataChar = await service.getCharacteristic(DATA_CHAR_UUID);
+    cmdChar        = await service.getCharacteristic(CMD_CHAR_UUID);
+
+    await dataChar.startNotifications();
+    dataChar.addEventListener('characteristicvaluechanged', onBLEData);
+
+    connected = true;
+    setStatus('connected', 'CONNECTED');
+    connectBtn.textContent = 'Disconnect';
+    connectBtn.disabled = false;
+    addLog(`Connected to ${bleDevice.name}`, 'connect');
+  } catch (err) {
+    setStatus('disconnected', 'DISCONNECTED');
+    connectBtn.disabled = false;
+    addLog(`BLE Error: ${err.message}`, 'anomaly');
+    console.error(err);
+  }
+});
+
+function disconnectBLE() {
+  if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+}
+
+function onDisconnected() {
+  connected = false;
+  cmdChar = null;
+  setStatus('disconnected', 'DISCONNECTED');
+  connectBtn.textContent = 'Connect BLE';
+  connectBtn.disabled = false;
+  addLog('BLE disconnected', 'connect');
+}
+
+// ─── BLE Data Handler ─────────────────────────────────────────────────────────
+function onBLEData(event) {
+  const decoder = new TextDecoder('utf-8');
+  const raw = decoder.decode(event.target.value);
+  let data;
+  try { data = JSON.parse(raw); } catch { return; }
+
+  const flow    = parseFloat(data.flow_lpm)  || 0;
+  const total   = parseFloat(data.total_l)   || 0;
+  const anomaly = data.anomaly || '';
+
+  totalLitres = total;
+
+  // Update chart
+  flowHistory.shift();
+  flowHistory.push(flow);
+  drawChart();
+
+  // Update metrics
+  valFlow.innerHTML = `${flow.toFixed(3)}<small>L/min</small>`;
+  valTotal.innerHTML = `${total.toFixed(3)}<small>L</small>`;
+  subFlow.textContent = flow > 0.001 ? 'Flowing ●' : 'No flow';
+
+  updateCostDisplay();
+  updateMileage();
+  handleAnomaly(anomaly, flow, total);
+
+  // CSV row
+  const now = new Date().toISOString();
+  const spd = lastPos?.speed != null ? (lastPos.speed * 3.6).toFixed(1) : '';
+  csvRows.push([now, flow.toFixed(4), total.toFixed(4), tripDistance.toFixed(4), spd, anomaly]);
+
+  // Inform ESP32 about motion state
+  sendCmd(tripDistance > 0 && parseFloat(gpsSpeedEl.textContent) > 1 ? 'MOVING' : 'STOPPED');
+}
+
+function updateCostDisplay() {
+  const cost = totalLitres * fuelPricePerL;
+  valCost.innerHTML = `₹${cost.toFixed(0)}<small></small>`;
+}
+
+function updateMileage() {
+  if (tripDistance > 0.05 && totalLitres > 0.01) {
+    const mileage = tripDistance / totalLitres;
+    valMileage.innerHTML = `${mileage.toFixed(1)}<small>km/L</small>`;
+    subMileage.textContent = `${tripDistance.toFixed(2)} km / ${totalLitres.toFixed(3)} L`;
+  } else {
+    valMileage.innerHTML = `—<small>km/L</small>`;
+  }
+}
+
+// ─── Anomaly Handling ─────────────────────────────────────────────────────────
+let lastAnomaly = '';
+let anomalyTimeout = null;
+
+function handleAnomaly(anomaly, flow, total) {
+  if (!anomaly) {
+    if (lastAnomaly) {
+      clearTimeout(anomalyTimeout);
+      anomalyTimeout = setTimeout(() => {
+        alertBanner.style.display = 'none';
+        lastAnomaly = '';
+      }, 4000);
+    }
+    return;
+  }
+
+  if (anomaly === lastAnomaly) return; // no re-trigger
+  lastAnomaly = anomaly;
+  clearTimeout(anomalyTimeout);
+
+  const msgs = {
+    LEAKAGE: '⚠️ FUEL LEAKAGE SUSPECTED — Flow detected while stationary!',
+    THEFT:   '🚨 POSSIBLE FUEL THEFT DETECTED — Sudden drop in fuel level!',
+    SPIKE:   '⚡ CONSUMPTION SPIKE — Flow exceeds 2× normal average!'
+  };
+
+  alertBanner.className = `anomaly ${anomaly}`;
+  alertBanner.textContent = msgs[anomaly] || anomaly;
+  alertBanner.style.display = 'block';
+  alertBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  addLog(msgs[anomaly], 'anomaly');
+  vibrate([200, 100, 200]);
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+// ─── BLE Write (fire-and-forget) ──────────────────────────────────────────────
+async function sendCmd(cmd) {
+  if (!cmdChar) return;
+  try {
+    const enc = new TextEncoder();
+    await cmdChar.writeValue(enc.encode(cmd));
+  } catch (_) {}
+}
+
+// ─── GPS ──────────────────────────────────────────────────────────────────────
+gpsBtn.addEventListener('click', () => {
+  if (!gpsActive) startGPS(); else stopGPS();
+});
+
+function startGPS() {
+  if (!('geolocation' in navigator)) {
+    addLog('Geolocation not available', 'anomaly');
+    return;
+  }
+  gpsWatchId = navigator.geolocation.watchPosition(
+    onGPSUpdate,
+    onGPSError,
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+  );
+  gpsActive = true;
+  gpsBtn.textContent = '■ Stop GPS';
+  gpsStatusEl.textContent = 'Acquiring…';
+  gpsStatusEl.className = 'gps-val';
+  addLog('GPS started', 'gps-log');
+}
+
+function stopGPS() {
+  if (gpsWatchId != null) navigator.geolocation.clearWatch(gpsWatchId);
+  gpsActive = false;
+  gpsBtn.textContent = '▶ Start GPS';
+  gpsStatusEl.textContent = 'Inactive';
+  gpsStatusEl.className = 'gps-val';
+  lastPos = null;
+  addLog('GPS stopped', 'gps-log');
+}
+
+function onGPSUpdate(pos) {
+  const { latitude, longitude, speed, accuracy } = pos.coords;
+  const speedKmh = speed != null ? speed * 3.6 : 0;
+
+  gpsLatEl.textContent   = latitude.toFixed(6);
+  gpsLonEl.textContent   = longitude.toFixed(6);
+  gpsSpeedEl.textContent = `${speedKmh.toFixed(1)} km/h`;
+  gpsStatusEl.textContent = `Active (±${accuracy.toFixed(0)}m)`;
+  gpsStatusEl.className  = 'gps-val active';
+
+  if (lastPos) {
+    const d = haversine(lastPos.lat, lastPos.lon, latitude, longitude);
+    tripDistance += d;
+    gpsDistEl.textContent = `${tripDistance.toFixed(3)} km`;
+    updateMileage();
+  }
+
+  lastPos = { lat: latitude, lon: longitude, speed: speed };
+}
+
+function onGPSError(err) {
+  gpsStatusEl.textContent = `Error: ${err.message}`;
+  addLog(`GPS error: ${err.message}`, 'anomaly');
+}
+
+// ─── Haversine ────────────────────────────────────────────────────────────────
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ─── Chart ────────────────────────────────────────────────────────────────────
+function drawChart() {
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { t: 8, b: 20, l: 8, r: 8 };
+  const chartW = W - pad.l - pad.r;
+  const chartH = H - pad.t - pad.b;
+
+  const maxVal = Math.max(...flowHistory, 0.2);
+  const step   = chartW / (CHART_LEN - 1);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,200,255,0.07)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (chartH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + chartW, y); ctx.stroke();
+  }
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
+  grad.addColorStop(0, 'rgba(0,200,255,0.3)');
+  grad.addColorStop(1, 'rgba(0,200,255,0.01)');
+
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t + chartH);
+  flowHistory.forEach((v, i) => {
+    const x = pad.l + i * step;
+    const y = pad.t + chartH - (v / maxVal) * chartH;
+    i === 0 ? ctx.lineTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(pad.l + (CHART_LEN-1) * step, pad.t + chartH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#00c8ff';
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  flowHistory.forEach((v, i) => {
+    const x = pad.l + i * step;
+    const y = pad.t + chartH - (v / maxVal) * chartH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Latest dot
+  const lastVal = flowHistory[CHART_LEN - 1];
+  const dotX = pad.l + (CHART_LEN - 1) * step;
+  const dotY = pad.t + chartH - (lastVal / maxVal) * chartH;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#00c8ff';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Y-axis max label
+  ctx.fillStyle = 'rgba(0,200,255,0.5)';
+  ctx.font = `9px 'Space Mono', monospace`;
+  ctx.textAlign = 'right';
+  ctx.fillText(`${maxVal.toFixed(2)}`, pad.l + chartW, pad.t + 9);
+  ctx.fillText('0', pad.l + chartW, pad.t + chartH - 2);
+}
+
+// Initial chart draw
+drawChart();
+window.addEventListener('resize', drawChart);
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+document.getElementById('resetBtn').addEventListener('click', () => {
+  totalLitres = 0;
+  tripDistance = 0;
+  lastPos = null;
+  flowHistory.fill(0);
+  drawChart();
+  valFlow.innerHTML  = `0.000<small>L/min</small>`;
+  valTotal.innerHTML = `0.000<small>L</small>`;
+  valMileage.innerHTML = `—<small>km/L</small>`;
+  valCost.innerHTML  = `₹0`;
+  gpsDistEl.textContent = '0.000 km';
+  alertBanner.style.display = 'none';
+  lastAnomaly = '';
+  csvRows.length = 1; // keep header
+  addLog('Session reset', 'connect');
+  sendCmd('RESET');
+});
+
+// ─── Export CSV ───────────────────────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const content = csvRows.map(r => r.join(',')).join('\n');
+  const blob  = new Blob([content], { type: 'text/csv' });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href      = url;
+  a.download  = `fuelsense_${new Date().toISOString().slice(0,16).replace(':','-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  addLog('CSV exported', 'gps-log');
+});
+
+// ─── Initial log ──────────────────────────────────────────────────────────────
+addLog('FuelSense AI ready. Click "Connect BLE" to pair with ESP32.', 'connect');
+addLog('Ensure Chrome is used on Android or desktop.', '');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PWA — Service Worker (inline blob) + Install Prompt + Offline Detection
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── 1. Inline Service Worker via Blob URL ─────────────────────────────────────
+const SW_CACHE   = 'fuelsense-v1';
+const swCode = `
+const CACHE = '${SW_CACHE}';
+
+// On install: cache the page itself
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll([self.location.href]))
+    .then(() => self.skipWaiting())
+  );
+});
+
+// On activate: delete old caches
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Fetch: network-first, fall back to cache
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    fetch(e.request)
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
+  );
+});
+
+// Push notifications support
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : { title: 'FuelSense AI', body: 'Alert!' };
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '',
+      badge: data.badge || '',
+      tag: 'fuelsense-alert',
+      renotify: true,
+      vibrate: [200, 100, 200]
+    })
+  );
+});
+`;
+
+if ('serviceWorker' in navigator) {
+  const blob   = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl  = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl, { scope: './' })
+    .then(reg => {
+      addLog('Service worker registered — app works offline', 'gps-log');
+      // Request notification permission for anomaly push (best-effort)
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    })
+    .catch(err => {
+      // Blob SW may be blocked in some browsers; silent fail is fine
+      console.warn('SW registration skipped:', err.message);
+    });
+}
+
+// ── 2. Install Prompt (beforeinstallprompt) ───────────────────────────────────
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+const installBtn    = document.getElementById('installBtn');
+const dismissBtn    = document.getElementById('dismissBtn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show banner after a short delay so it doesn't pop immediately
+  setTimeout(() => { installBanner.style.display = 'flex'; }, 2000);
+  addLog('PWA install available — tap Install banner', 'gps-log');
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  installBanner.style.display = 'none';
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  addLog(`PWA install: ${outcome}`, 'gps-log');
+  deferredPrompt = null;
+});
+
+dismissBtn.addEventListener('click', () => {
+  installBanner.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', () => {
+  addLog('FuelSense AI installed to home screen ✓', 'connect');
+  installBanner.style.display = 'none';
+});
+
+// ── 3. Offline / Online Detection ────────────────────────────────────────────
+const offlineToast = document.getElementById('offlineToast');
+
+function updateOnlineStatus() {
+  if (!navigator.onLine) {
+    offlineToast.style.display = 'block';
+    addLog('Network offline — running on cached app', '');
+  } else {
+    offlineToast.style.display = 'none';
+  }
+}
+
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus(); // check on load
+
+// ── 4. Background Sync: persist session to localStorage on BLE data ───────────
+function persistSession() {
+  try {
+    localStorage.setItem('fs_session', JSON.stringify({
+      totalLitres,
+      tripDistance,
+      fuelPricePerL,
+      ts: Date.now()
+    }));
+  } catch (_) {}
+}
+
+function restoreSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('fs_session') || 'null');
+    // Only restore if session is <4 hours old
+    if (saved && (Date.now() - saved.ts) < 4 * 3600 * 1000) {
+      totalLitres   = saved.totalLitres   || 0;
+      tripDistance  = saved.tripDistance  || 0;
+      fuelPricePerL = saved.fuelPricePerL || 105;
+      fuelSlider.value = fuelPricePerL;
+      fuelPriceLabel.textContent = `₹${fuelPricePerL.toFixed(2)}/L`;
+      valTotal.innerHTML = `${totalLitres.toFixed(3)}<small>L</small>`;
+      gpsDistEl.textContent = `${tripDistance.toFixed(3)} km`;
+      updateCostDisplay();
+      updateMileage();
+      addLog(`Session restored: ${totalLitres.toFixed(3)}L / ${tripDistance.toFixed(3)}km`, 'gps-log');
+    }
+  } catch (_) {}
+}
+
+restoreSession();
+
+// Patch onBLEData to also persist
+const _origOnBLEData = onBLEData;
+// Override persistSession call via monkey-patch on updateMileage
+const _origUpdateMileage = updateMileage;
+window.updateMileage = function() {
+  _origUpdateMileage();
+  persistSession();
+};
+
+// Also patch reset to clear storage
+const resetBtn2 = document.getElementById('resetBtn');
+resetBtn2.addEventListener('click', () => {
+  try { localStorage.removeItem('fs_session'); } catch (_) {}
+}, true); // capture phase so it fires before the existing handler clears state
+
+</script>
+</body>
+</html>
