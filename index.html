@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Real-time fuel efficiency monitoring with YF-S201B sensor via ESP32 BLE and mobile GPS">
 <title>SFEMS - SMART FUEL EFFICIENCY MONITORING SYSTEM</title>
-<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22FuelSense%20AI%22%2C%22short_name%22%3A%22FuelSense%22%2C%22description%22%3A%22Real-time%20fuel%20efficiency%20monitoring%20%26%20anomaly%20detection%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iODAiIGZpbGw9IiMwMDAwMDAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyODBweCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZpbGw9IiNmZmZmZmYiPkY8L3RleHQ+PC9zdmc+%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22SFEMS%20AI%22%2C%22short_name%22%3A%22SFEMS%22%2C%22description%22%3A%22Real-time%20fuel%20efficiency%20monitoring%20%26%20anomaly%20detection%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iODAiIGZpbGw9IiMwMDAwMDAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyODBweCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZpbGw9IiNmZmZmZmYiPkY8L3RleHQ+PC9zdmc+%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -719,7 +719,7 @@ connectBtn.addEventListener('click', async () => {
 
   try {
     bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'FuelSense-ESP32' }],
+      filters: [{ name: 'SFEMS-ESP32' }],
       optionalServices: [SERVICE_UUID]
     });
 
@@ -1029,7 +1029,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   const url   = URL.createObjectURL(blob);
   const a     = document.createElement('a');
   a.href      = url;
-  a.download  = `fuelsense_${new Date().toISOString().slice(0,16).replace(':','-')}.csv`;
+  a.download  = `SFEMS\\_${new Date().toISOString().slice(0,16).replace(':','-')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
   addLog('CSV exported', 'gps-log');
@@ -1044,7 +1044,7 @@ addLog('Ensure Chrome is used on Android or desktop.', '');
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── 1. Inline Service Worker via Blob URL ─────────────────────────────────────
-const SW_CACHE   = 'fuelsense-v1';
+const SW_CACHE   = 'SFEMS-v1';
 const swCode = `
 const CACHE = '${SW_CACHE}';
 
@@ -1087,7 +1087,7 @@ self.addEventListener('push', e => {
       body: data.body,
       icon: data.icon || '',
       badge: data.badge || '',
-      tag: 'fuelsense-alert',
+      tag: 'SFEMS-alert',
       renotify: true,
       vibrate: [200, 100, 200]
     })
