@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Real-time fuel efficiency monitoring with YF-S201B sensor via ESP32 BLE and mobile GPS">
-<title>FuelSense AI</title>
+<title>SFEMS - SMART FUEL EFFICIENCY MONITORING SYSTEM</title>
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22FuelSense%20AI%22%2C%22short_name%22%3A%22FuelSense%22%2C%22description%22%3A%22Real-time%20fuel%20efficiency%20monitoring%20%26%20anomaly%20detection%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iODAiIGZpbGw9IiMwMDAwMDAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyODBweCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZpbGw9IiNmZmZmZmYiPkY8L3RleHQ+PC9zdmc+%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
@@ -137,11 +137,11 @@ header {
 
 /* ── Connect Button ──────────────────────────────────────────────────────── */
 #connectBtn {
-  padding: 8px 18px;
+  padding: 1px 18px;
   background: var(--green);
   color: #000;
-  border: none;
-  border-radius: var(--r);
+  border: 3px dashed rgb(0, 0, 0);
+  border-radius: 60px;
   font-family: var(--display);
   font-size: 14px;
   font-weight: 700;
@@ -150,7 +150,7 @@ header {
   transition: all 0.2s;
   text-transform: uppercase;
 }
-#connectBtn:hover  { background: #00ff88; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,232,122,0.4); }
+#connectBtn:hover  { background: #00ff88; transform: translateY(-1px); }
 #connectBtn:active { transform: translateY(0); }
 #connectBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
@@ -387,8 +387,8 @@ main { flex: 1; padding: 20px; max-width: 900px; margin: 0 auto; width: 100%; }
   display: none;
   align-items: center;
   gap: 12px;
-  min-width: 280px;
-  max-width: 360px;
+  min-width: 400px;
+  max-width: 400px;
   animation: slide-up 0.4s cubic-bezier(0.34,1.56,0.64,1);
 }
 @keyframes slide-up {
@@ -488,14 +488,7 @@ footer {
 <!-- ── Header ──────────────────────────────────────────────────────────── -->
 <header>
   <div class="logo">
-    <div class="logo-icon">
-      <!-- simple fuel gauge icon SVG (no emoji) -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="#ff3b5c" stroke-width="2">
-        <path d="M19 10V6a4 4 0 0 0-8 0v4H5v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6h-3v-4h3z" stroke-linecap="round"/>
-        <circle cx="12" cy="16" r="2" fill="#ff3b5c" stroke="none"/>
-      </svg>
-    </div>
-    <div class="logo-text">Fuel<span>Sense</span> AI</div>
+    <div class="logo-text"><span>SFEMS</span></div>
   </div>
   <div class="header-right">
     <div class="status-pill disconnected" id="statusPill">
@@ -515,7 +508,7 @@ footer {
     </svg>
   </div>
   <div class="ib-text">
-    <div class="ib-title">Install FuelSense AI</div>
+    <div class="ib-title">Install SFEMS</div>
     <div class="ib-sub">Add to home screen · Works offline</div>
   </div>
   <div class="ib-actions">
@@ -633,7 +626,7 @@ footer {
 
 </main>
 
-<footer>FUELSENSE AI · YF-S201B + ESP32 BLE + MOBILE GPS · BMSIT&M 2025-26 · MANISH THAKUR</footer>
+<footer>SFEMS - SMART FUEL EFFICIENCY MONITORING SYSTEM · YF-S201B + ESP32 BLE + MOBILE GPS · BMSIT&M 2025-26</footer>
 </div>
 
 <script>
@@ -1043,7 +1036,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 // ─── Initial log ──────────────────────────────────────────────────────────────
-addLog('FuelSense AI ready. Click "Connect BLE" to pair with ESP32.', 'connect');
+addLog('SFEMS ready. Click "Connect BLE" to pair with ESP32.', 'connect');
 addLog('Ensure Chrome is used on Android or desktop.', '');
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1088,7 +1081,7 @@ self.addEventListener('fetch', e => {
 
 // Push notifications support
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : { title: 'FuelSense AI', body: 'Alert!' };
+  const data = e.data ? e.data.json() : { title: 'SFEMS', body: 'Alert!' };
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -1147,7 +1140,7 @@ dismissBtn.addEventListener('click', () => {
 });
 
 window.addEventListener('appinstalled', () => {
-  addLog('FuelSense AI installed to home screen ✓', 'connect');
+  addLog('SFEMS installed to home screen ✓', 'connect');
   installBanner.style.display = 'none';
 });
 
